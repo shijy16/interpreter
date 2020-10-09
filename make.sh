@@ -1,5 +1,5 @@
 containerId="2697757d708a"
-code_file="./sample/" #change to code files later
+code_file="./ast-interpreter/"
 testcases="./testcase"
 
 tempBuildFolder="/root/build/"
