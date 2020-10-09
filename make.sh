@@ -3,7 +3,7 @@ code_file="./sample/" #change to code files later
 testcases="./testcase"
 
 tempBuildFolder="/root/build/"
-container_code_file="/root/ast-interpreter"
+container_code_file="/root/${code_file}/"
 echo "copy code..."
 docker exec ${containerId} rm -r ${container_code_file}
 docker cp ${code_file} ${containerId}:/root/
