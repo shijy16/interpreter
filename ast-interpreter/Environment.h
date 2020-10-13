@@ -23,16 +23,20 @@ public:
    }
 
    void bindDecl(Decl* decl, int val) {
+      //llvm::errs() << "binddecl:"<<val<<"\n";
       mVars[decl] = val;
-   }    
+   } 
+
    int getDeclVal(Decl * decl) {
       assert (mVars.find(decl) != mVars.end());
       return mVars.find(decl)->second;
    }
    void bindStmt(Stmt * stmt, int val) {
+       //llvm::errs() << "bindStmt "<<val<<"\n";
        mExprs[stmt] = val;
    }
    int getStmtVal(Stmt * stmt) {
+       //llvm::errs() << "getStmtVal:"<<stmt<<"\n";
        assert (mExprs.find(stmt) != mExprs.end());
        return mExprs[stmt];
    }
@@ -88,17 +92,27 @@ public:
        return mEntry;
    }
 
+    //bind int literal stmt and value
+    void integerLiteral(IntegerLiteral* literal){
+        Expr* literalExpr = dyn_cast<Expr>(literal);
+        int value = (int)literal->getValue().getLimitedValue();
+        mStack.back().bindStmt(literalExpr,value);
+    }
+
+
    /// !TODO Support comparison operation
    void binop(BinaryOperator *bop) {
        Expr * left = bop->getLHS();
        Expr * right = bop->getRHS();
 
+   //    llvm::errs() << "binop.\n";
        if (bop->isAssignmentOp()) {
            int val = mStack.back().getStmtVal(right);
            mStack.back().bindStmt(left, val);
            if (DeclRefExpr * declexpr = dyn_cast<DeclRefExpr>(left)) {
                Decl * decl = declexpr->getFoundDecl();
                mStack.back().bindDecl(decl, val);
+
            }
        }
    }
@@ -106,8 +120,8 @@ public:
    void decl(DeclStmt * declstmt) {
        for (DeclStmt::decl_iterator it = declstmt->decl_begin(), ie = declstmt->decl_end();
                it != ie; ++ it) {
-           Decl * decl = *it;
-           if (VarDecl * vardecl = dyn_cast<VarDecl>(decl)) {
+           Decl * decl = *it; 
+           if (VarDecl * vardecl = dyn_cast<VarDecl>(decl)) { 
                mStack.back().bindDecl(vardecl, 0);
            }
        }

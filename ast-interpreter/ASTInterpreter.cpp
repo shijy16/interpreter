@@ -18,23 +18,35 @@ public:
    : EvaluatedExprVisitor(context), mEnv(env) {}
    virtual ~InterpreterVisitor() {}
 
+
+   //visit cont int literal
+   virtual void VisitIntegerLiteral(IntegerLiteral* literal){
+        llvm::errs()<<"VisitIntegerLiteral.\n";
+        mEnv->integerLiteral(literal);
+   }
+
    virtual void VisitBinaryOperator (BinaryOperator * bop) {
+       llvm::errs() << "VisitBinaryOperator.\n";
        VisitStmt(bop);
        mEnv->binop(bop);
    }
    virtual void VisitDeclRefExpr(DeclRefExpr * expr) {
+       llvm::errs() << "VisitDeclRefExpr.\n";
        VisitStmt(expr);
        mEnv->declref(expr);
    }
    virtual void VisitCastExpr(CastExpr * expr) {
+       llvm::errs() << "VisitCastExpr.\n";
        VisitStmt(expr);
        mEnv->cast(expr);
    }
    virtual void VisitCallExpr(CallExpr * call) {
+       llvm::errs() << "VisitCallExpr.\n";
        VisitStmt(call);
        mEnv->call(call);
    }
    virtual void VisitDeclStmt(DeclStmt * declstmt) {
+       llvm::errs() << "VisitDeclStmt.\n";
        mEnv->decl(declstmt);
    }
 private:
