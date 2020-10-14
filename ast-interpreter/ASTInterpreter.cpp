@@ -20,10 +20,10 @@ public:
 
 
    //visit cont int literal
-   virtual void VisitIntegerLiteral(IntegerLiteral* literal){
-        llvm::errs()<<"VisitIntegerLiteral.\n";
-        mEnv->integerLiteral(literal);
-   }
+   //virtual void VisitIntegerLiteral(IntegerLiteral* literal){
+   //     llvm::errs()<<"VisitIntegerLiteral.\n";
+   //         mEnv->integerLiteral(literal);
+   //}
 
    virtual void VisitBinaryOperator (BinaryOperator * bop) {
        llvm::errs() << "VisitBinaryOperator.\n";

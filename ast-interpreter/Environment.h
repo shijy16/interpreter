@@ -21,6 +21,9 @@ class StackFrame {
 public:
    StackFrame() : mVars(), mExprs(), mPC() {
    }
+   bool findDecl(Decl* decl){
+       return mVars.find(decl) != mVars.end();
+   }
 
    void bindDecl(Decl* decl, int val) {
       //llvm::errs() << "binddecl:"<<val<<"\n";
@@ -76,7 +79,15 @@ public:
 
    /// Initialize the Environment
    void init(TranslationUnitDecl * unit) {
+       //global stackframe
+       mStack.push_back(StackFrame());
        for (TranslationUnitDecl::decl_iterator i =unit->decls_begin(), e = unit->decls_end(); i != e; ++ i) {
+           //global integer values
+           //if (VarDecl * vardecl = dyn_cast<VarDecl>(decl)){
+           //    if()
+           //    int value = (int)iterater->getValue().getLimitedValue();
+           //     mStack.back().bindDecl(vardecl,)
+           //}
            if (FunctionDecl * fdecl = dyn_cast<FunctionDecl>(*i) ) {
                if (fdecl->getName().equals("FREE")) mFree = fdecl;
                else if (fdecl->getName().equals("MALLOC")) mMalloc = fdecl;
@@ -93,11 +104,19 @@ public:
    }
 
     //bind int literal stmt and value
-    void integerLiteral(IntegerLiteral* literal){
-        Expr* literalExpr = dyn_cast<Expr>(literal);
-        int value = (int)literal->getValue().getLimitedValue();
-        mStack.back().bindStmt(literalExpr,value);
-    }
+    //void integerLiteral(IntegerLiteral* literal){
+    //    Expr* literalExpr = dyn_cast<Expr>(literal);
+    //    int value = (int)literal->getValue().getLimitedValue();
+    //    mStack.back().bindStmt(literalExpr,value);
+    //}
+    
+   void expr(Expr* expr){
+       //integerLiteral
+        if(IntegerLiteral* integerLiteral = dyn_cast<IntegerLiteral>(expr)){
+            int value  = (int)integerLiteral->getValue().getSExtValue();
+            mStack.back().bindStmt(expr,value);
+        }
+   }
 
 
    /// !TODO Support comparison operation
@@ -107,6 +126,7 @@ public:
 
    //    llvm::errs() << "binop.\n";
        if (bop->isAssignmentOp()) {
+           expr(right);
            int val = mStack.back().getStmtVal(right);
            mStack.back().bindStmt(left, val);
            if (DeclRefExpr * declexpr = dyn_cast<DeclRefExpr>(left)) {
@@ -118,6 +138,7 @@ public:
    }
 
    void decl(DeclStmt * declstmt) {
+       llvm::errs() << "\tdecl\n";
        for (DeclStmt::decl_iterator it = declstmt->decl_begin(), ie = declstmt->decl_end();
                it != ie; ++ it) {
            Decl * decl = *it; 
@@ -127,12 +148,12 @@ public:
        }
    }
    void declref(DeclRefExpr * declref) {
+       llvm::errs() << "\t in declref\n";
        mStack.back().setPC(declref);
        if (declref->getType()->isIntegerType()) {
            Decl* decl = declref->getFoundDecl();
-
-           int val = mStack.back().getDeclVal(decl);
-           mStack.back().bindStmt(declref, val);
+            int val = mStack.back().getDeclVal(decl);
+            mStack.back().bindStmt(declref, val);
        }
    }
 
@@ -147,15 +168,18 @@ public:
 
    /// !TODO Support Function Call
    void call(CallExpr * callexpr) {
+       llvm::errs() << "\t in call\n";
        mStack.back().setPC(callexpr);
        int val = 0;
        FunctionDecl * callee = callexpr->getDirectCallee();
        if (callee == mInput) {
-          llvm::errs() << "Please Input an Integer Value : ";
+           llvm::errs() << "\t call INPUT\n";
+           llvm::errs() << "Please Input an Integer Value : ";
           scanf("%d", &val);
 
           mStack.back().bindStmt(callexpr, val);
        } else if (callee == mOutput) {
+           llvm::errs() << "\tcall PRINT\n";
            Expr * decl = callexpr->getArg(0);
            val = mStack.back().getStmtVal(decl);
            llvm::errs() << val;
