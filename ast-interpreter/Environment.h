@@ -82,12 +82,19 @@ public:
        //global stackframe
        mStack.push_back(StackFrame());
        for (TranslationUnitDecl::decl_iterator i =unit->decls_begin(), e = unit->decls_end(); i != e; ++ i) {
-           //global integer values
-           //if (VarDecl * vardecl = dyn_cast<VarDecl>(decl)){
-           //    if()
-           //    int value = (int)iterater->getValue().getLimitedValue();
-           //     mStack.back().bindDecl(vardecl,)
-           //}
+           //global values
+           if (VarDecl * vardecl = dyn_cast<VarDecl>(*i)){
+               if(vardecl->getType().getTypePtr()->isIntegerType()){
+                    int value = 0;
+                    if(vardecl->hasInit()){
+                        Expr* e = vardecl->getInit();
+                        expr(e);
+                        value = mStack.back().getStmtVal(e);
+                    }
+                    mStack.back().bindDecl(vardecl,value);
+                    llvm::errs()<<"global init:"<<value<<"\n";
+               }
+           }
            if (FunctionDecl * fdecl = dyn_cast<FunctionDecl>(*i) ) {
                if (fdecl->getName().equals("FREE")) mFree = fdecl;
                else if (fdecl->getName().equals("MALLOC")) mMalloc = fdecl;
@@ -151,8 +158,9 @@ public:
        llvm::errs() << "\t in declref\n";
        mStack.back().setPC(declref);
        if (declref->getType()->isIntegerType()) {
-           Decl* decl = declref->getFoundDecl();
-            int val = mStack.back().getDeclVal(decl);
+            Decl* decl = declref->getFoundDecl();
+            //global or local value
+            int val = mStack.back().findDecl(decl) ? mStack.back().getDeclVal(decl):mStack.front().getDeclVal(decl);
             mStack.back().bindStmt(declref, val);
        }
    }
