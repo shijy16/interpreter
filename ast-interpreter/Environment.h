@@ -108,11 +108,20 @@ public:
     //    mStack.back().bindStmt(literalExpr,value);
     //}
     
-   void expr(Expr* expr){
-       //integerLiteral
-        if(IntegerLiteral* integerLiteral = dyn_cast<IntegerLiteral>(expr)){
+   int expr(Expr* expr){
+       expr = expr->IgnoreImpCasts();//magic
+        if(BinaryOperator* bop = dyn_cast<BinaryOperator>(expr)){
+            binop(bop);
+            return mStack.back().getStmtVal(bop);
+        } else if (IntegerLiteral* integerLiteral = dyn_cast<IntegerLiteral>(expr)){
             int value  = (int)integerLiteral->getValue().getSExtValue();
-            mStack.back().bindStmt(expr,value);
+            return value;
+        } else if (DeclRefExpr* dref = dyn_cast<DeclRefExpr>(expr)){
+            declref(dref);
+            int value = mStack.back().getStmtVal(dref);
+            return value;
+        } else {
+            return -1;
         }
    }
 
@@ -122,16 +131,18 @@ public:
        Expr * left = bop->getLHS();
        Expr * right = bop->getRHS();
 
+
    //    llvm::errs() << "binop.\n";
        if (bop->isAssignmentOp()) {
-           expr(right);
-           int val = mStack.back().getStmtVal(right);
+           int val = expr(right);
            mStack.back().bindStmt(left, val);
            if (DeclRefExpr * declexpr = dyn_cast<DeclRefExpr>(left)) {
                Decl * decl = declexpr->getFoundDecl();
                mStack.back().bindDecl(decl, val);
 
            }
+       }else if(bop->isAdditiveOp()){
+
        }
    }
    
@@ -141,8 +152,7 @@ public:
             int value = 0;
             if(vdecl->hasInit()){
                 Expr* e = vdecl->getInit();
-                expr(e);
-                value = mStack.back().getStmtVal(e);
+                value = expr(e);
             }
             mStack.back().bindDecl(vdecl,value);
         }else{
@@ -169,6 +179,7 @@ public:
             Decl* decl = declref->getFoundDecl();
             //global or local value
             int val = mStack.back().findDecl(decl) ? mStack.back().getDeclVal(decl):mStack.front().getDeclVal(decl);
+            printf("\tdecl::%d\n",val);
             mStack.back().bindStmt(declref, val);
        }
    }
