@@ -83,18 +83,9 @@ public:
        mStack.push_back(StackFrame());
        for (TranslationUnitDecl::decl_iterator i =unit->decls_begin(), e = unit->decls_end(); i != e; ++ i) {
            //global values
-           if (VarDecl * vardecl = dyn_cast<VarDecl>(*i)){
-               if(vardecl->getType().getTypePtr()->isIntegerType()){
-                    int value = 0;
-                    if(vardecl->hasInit()){
-                        Expr* e = vardecl->getInit();
-                        expr(e);
-                        value = mStack.back().getStmtVal(e);
-                    }
-                    mStack.back().bindDecl(vardecl,value);
-                    llvm::errs()<<"global init:"<<value<<"\n";
-               }
-           }
+           if (VarDecl * vdecl = dyn_cast<VarDecl>(*i)){
+               vardecl(vdecl);
+            }
            if (FunctionDecl * fdecl = dyn_cast<FunctionDecl>(*i) ) {
                if (fdecl->getName().equals("FREE")) mFree = fdecl;
                else if (fdecl->getName().equals("MALLOC")) mMalloc = fdecl;
@@ -143,14 +134,31 @@ public:
            }
        }
    }
+   
+   //handle var delarations.
+    void vardecl(VarDecl* vdecl){
+        if(vdecl->getType().getTypePtr()->isIntegerType()){
+            int value = 0;
+            if(vdecl->hasInit()){
+                Expr* e = vdecl->getInit();
+                expr(e);
+                value = mStack.back().getStmtVal(e);
+            }
+            mStack.back().bindDecl(vdecl,value);
+        }else{
+            mStack.back().bindDecl(vdecl, 0);
+        }
+
+    }
+
 
    void decl(DeclStmt * declstmt) {
        llvm::errs() << "\tdecl\n";
        for (DeclStmt::decl_iterator it = declstmt->decl_begin(), ie = declstmt->decl_end();
                it != ie; ++ it) {
            Decl * decl = *it; 
-           if (VarDecl * vardecl = dyn_cast<VarDecl>(decl)) { 
-               mStack.back().bindDecl(vardecl, 0);
+           if (VarDecl * vdecl = dyn_cast<VarDecl>(decl)) { 
+                vardecl(vdecl);
            }
        }
    }
@@ -190,7 +198,7 @@ public:
            llvm::errs() << "\tcall PRINT\n";
            Expr * decl = callexpr->getArg(0);
            val = mStack.back().getStmtVal(decl);
-           llvm::errs() << val;
+           llvm::errs() << "==========OUTPUT:" << val <<"\n";
        } else {
            /// You could add your code here for Function call Return
        }
