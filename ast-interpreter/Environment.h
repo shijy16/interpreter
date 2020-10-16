@@ -133,7 +133,7 @@ public:
 
 
    //    llvm::errs() << "binop.\n";
-       if (bop->isAssignmentOp()) {
+       if (bop->isAssignmentOp()) {             // =
            int val = expr(right);
            mStack.back().bindStmt(left, val);
            if (DeclRefExpr * declexpr = dyn_cast<DeclRefExpr>(left)) {
@@ -141,8 +141,40 @@ public:
                mStack.back().bindDecl(decl, val);
 
            }
-       }else if(bop->isAdditiveOp()){
-
+       }else if(bop->isAdditiveOp()){           // + -
+            int valr = expr(right);
+            int vall = expr(left);
+            int res = 0;
+            if(bop->getOpcode() == BO_Add){
+                res = vall + valr;
+            }else{
+                res = vall - valr;
+            }
+            mStack.back().bindStmt(bop,res);
+       }else if(bop->isMultiplicativeOp()){     // * /
+            int valr = expr(right);
+            int vall = expr(left);
+            int res = 0;
+            if(bop->getOpcode() == BO_Mul){
+                res = vall * valr;
+            }else{
+                res = vall / valr;
+            }
+            mStack.back().bindStmt(bop,res);
+       }else if(bop->isComparisonOp()){         // > < >= <= == !=
+            int valr = expr(right);
+            int vall = expr(left);
+            int res = 0;
+            switch(bop->getOpcode()){
+                case BO_GT: res = (vall > valr);break;
+                case BO_LT: res = (vall < valr);break;
+                case BO_EQ: res = (vall == valr);break;
+                case BO_GE: res = (vall >= valr);break;
+                case BO_LE: res = (vall <= valr);break;
+                case BO_NE: res = (vall != valr);break;
+                default: llvm::errs()<<"Comparison Op not Identified.\n";break;
+            }
+            mStack.back().bindStmt(bop,res);
        }
    }
    

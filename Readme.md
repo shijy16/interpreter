@@ -4,14 +4,14 @@
 
 Type: int
 
-+ [ ] Operator:
-  + [ ]  `*`
-  + [ ]  `-`
-  + [ ]  `+`
-  + [ ]  `<`
-  + [ ] ` >`
-  + [ ] ` ==`
-  + [ ] ` =`
++ [x] Operator:
+  + [x]  `*`
+  + [x]  `-`
+  + [x]  `+`
+  + [x]  `<`
+  + [x] ` >`
+  + [x] ` ==`
+  + [x] ` =`
 + [ ] Statement
   + [ ] `BinaryOperator`,`UnaryOperator`
   + [ ] `CallExpr`
