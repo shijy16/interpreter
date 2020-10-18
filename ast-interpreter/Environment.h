@@ -18,6 +18,8 @@ class StackFrame {
    std::map<Stmt*, int> mExprs;
    /// The current stmt
    Stmt * mPC;
+   int retValue = 0;
+   bool returned = false;
 public:
    StackFrame() : mVars(), mExprs(), mPC() {
    }
@@ -49,6 +51,19 @@ public:
    Stmt * getPC() {
        return mPC;
    }
+
+    int getRetValue(){
+        return retValue;
+    }
+    void setRetValue(int v){
+        retValue = v;
+    }
+    void setReturned(){
+        returned = true;
+    }
+    bool isReturned(){
+        return returned;
+    }
 };
 
 /// Heap maps address to a value
@@ -73,7 +88,7 @@ class Environment {
    FunctionDecl * mEntry;
 public:
    /// Get the declartions to the built-in functions
-   Environment() : mStack(), mFree(NULL), mMalloc(NULL), mInput(NULL), mOutput(NULL), mEntry(NULL) {
+   Environment(): mStack(), mFree(NULL), mMalloc(NULL), mInput(NULL), mOutput(NULL), mEntry(NULL) {
    }
 
 
@@ -84,7 +99,7 @@ public:
        for (TranslationUnitDecl::decl_iterator i =unit->decls_begin(), e = unit->decls_end(); i != e; ++ i) {
            //global values
            if (VarDecl * vdecl = dyn_cast<VarDecl>(*i)){
-               vardecl(vdecl);
+               vardecl(vdecl,&(mStack.back()));
             }
            if (FunctionDecl * fdecl = dyn_cast<FunctionDecl>(*i) ) {
                if (fdecl->getName().equals("FREE")) mFree = fdecl;
@@ -95,6 +110,14 @@ public:
            }
        }
        mStack.push_back(StackFrame());
+   }
+
+   bool isExternalCall(FunctionDecl* f){
+        return f == mFree || f == mMalloc || f == mInput || f == mOutput;
+   }
+
+   bool isCurFuncReturned(){
+        return mStack.back().isReturned();
    }
 
    FunctionDecl * getEntry() {
@@ -120,7 +143,11 @@ public:
             declref(dref);
             int value = mStack.back().getStmtVal(dref);
             return value;
-        } else {
+        } else if (CallExpr* cexpr = dyn_cast<CallExpr>(expr)){
+            int value = mStack.back().getStmtVal(cexpr);
+            return value;
+        }
+        else {
             return -1;
         }
    }
@@ -179,16 +206,17 @@ public:
    }
    
    //handle var delarations.
-    void vardecl(VarDecl* vdecl){
+    void vardecl(VarDecl* vdecl,StackFrame* sf){
         if(vdecl->getType().getTypePtr()->isIntegerType()){
             int value = 0;
             if(vdecl->hasInit()){
                 Expr* e = vdecl->getInit();
                 value = expr(e);
+                printf("vardecl %d\n",value);
             }
-            mStack.back().bindDecl(vdecl,value);
+            sf->bindDecl(vdecl,value);
         }else{
-            mStack.back().bindDecl(vdecl, 0);
+            sf->bindDecl(vdecl, 0);
         }
 
     }
@@ -200,7 +228,7 @@ public:
                it != ie; ++ it) {
            Decl * decl = *it; 
            if (VarDecl * vdecl = dyn_cast<VarDecl>(decl)) { 
-                vardecl(vdecl);
+                vardecl(vdecl,&(mStack.back()));
            }
        }
    }
@@ -225,6 +253,29 @@ public:
        }
    }
 
+   void ret(CallExpr* callexpr){
+        FunctionDecl * callee = callexpr->getDirectCallee();
+        if(callee->isNoReturn()){
+            mStack.pop_back();
+        } else {
+            int rval = mStack.back().getRetValue();
+            printf("pop stack:%d\n",rval);
+            mStack.pop_back();
+            mStack.back().bindStmt(callexpr,rval);
+        }
+        printf("ret here\n");
+   }
+
+   void retstmt(ReturnStmt* rstmt){
+       Expr* rexpr = rstmt->getRetValue();
+       if(rexpr){
+            int rval = expr(rexpr);
+            mStack.back().setRetValue(rval);
+       }
+       mStack.back().setReturned();
+       printf("retstmt\n");
+   }
+
    /// !TODO Support Function Call
    void call(CallExpr * callexpr) {
        llvm::errs() << "\t in call\n";
@@ -232,18 +283,26 @@ public:
        int val = 0;
        FunctionDecl * callee = callexpr->getDirectCallee();
        if (callee == mInput) {
-           llvm::errs() << "\t call INPUT\n";
-           llvm::errs() << "Please Input an Integer Value : ";
-          scanf("%d", &val);
+            llvm::errs() << "Please Input an Integer Value : ";
+            scanf("%d", &val);
 
-          mStack.back().bindStmt(callexpr, val);
+            mStack.back().bindStmt(callexpr, val);
        } else if (callee == mOutput) {
-           llvm::errs() << "\tcall PRINT\n";
-           Expr * decl = callexpr->getArg(0);
-           val = mStack.back().getStmtVal(decl);
+           Expr * e = callexpr->getArg(0);
+           val = expr(e);
            llvm::errs() << "==========OUTPUT:" << val <<"\n";
        } else {
            /// You could add your code here for Function call Return
+            StackFrame calleeStack = StackFrame();
+            unsigned param_num = callee->getNumParams();
+            for(unsigned i = 0;i < param_num;i++){
+                Expr * e = callexpr->getArg(i);
+                int val = expr(e);
+                VarDecl* vd = dyn_cast<VarDecl> (callee->getParamDecl(i));
+                vardecl(vd,&calleeStack);
+                calleeStack.bindDecl(vd,val);
+            }
+            mStack.push_back(calleeStack);
        }
    }
 };

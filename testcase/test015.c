@@ -5,15 +5,14 @@ extern void PRINT(int);
 
 int b=10;
 int f(int x,int y) {
-  if (y > 0)
-        return x + f(x,y-1);
-  else 
-    return 0;
+    if(x >= 1){
+        return y + f(x-1,y);}
+    else return 0;
 }
 int main() {
-   int a=2;
-   PRINT(f(b,a));
+   int a = f(1,10);
+    PRINT(a);
 }
 
 
-#20
+#10

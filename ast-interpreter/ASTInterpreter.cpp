@@ -19,34 +19,62 @@ public:
    virtual ~InterpreterVisitor() {}
 
 
-   //visit cont int literal
-   //virtual void VisitIntegerLiteral(IntegerLiteral* literal){
-   //     llvm::errs()<<"VisitIntegerLiteral.\n";
-   //         mEnv->integerLiteral(literal);
-   //}
+   //visit ifStmt
+   virtual void VisitIfStmt(IfStmt* ifstmt){
+        if(mEnv->isCurFuncReturned()){return;}
+        Expr* cond = ifstmt->getCond();
+        int res = mEnv->expr(cond);
+        if(res == 1){
+            Visit(ifstmt->getThen());   //cannot use VisitStmt. donot know why
+        }else{
+            Visit(ifstmt->getElse());
+        }
+   }
 
    virtual void VisitBinaryOperator (BinaryOperator * bop) {
+        if(mEnv->isCurFuncReturned()){return;}
        llvm::errs() << "VisitBinaryOperator.\n";
        VisitStmt(bop);
        mEnv->binop(bop);
    }
    virtual void VisitDeclRefExpr(DeclRefExpr * expr) {
-       llvm::errs() << "VisitDeclRefExpr.\n";
+        if(mEnv->isCurFuncReturned()){return;}
+        llvm::errs() << "VisitDeclRefExpr.\n";
        VisitStmt(expr);
        mEnv->declref(expr);
    }
    virtual void VisitCastExpr(CastExpr * expr) {
+        if(mEnv->isCurFuncReturned()){return;}
        llvm::errs() << "VisitCastExpr.\n";
        VisitStmt(expr);
        mEnv->cast(expr);
    }
+   virtual void VisitReturnStmt(ReturnStmt* rets){
+       llvm::errs() << "VisitRtnStmt.\n";
+        if(mEnv->isCurFuncReturned()){return;}
+        Visit(rets->getRetValue());
+        mEnv->retstmt(rets);
+   }
+   
    virtual void VisitCallExpr(CallExpr * call) {
+        if(mEnv->isCurFuncReturned()){return;}
        llvm::errs() << "VisitCallExpr.\n";
        VisitStmt(call);
        mEnv->call(call);
+       FunctionDecl* callee = call->getCalleeDecl()->getAsFunction();
+       if(mEnv->isExternalCall(callee))
+           return;
+       if(callee->hasBody()){
+           VisitStmt(callee->getBody());
+       }
+       //default return here
+       mEnv->ret(call);
    }
+
    virtual void VisitDeclStmt(DeclStmt * declstmt) {
+        if(mEnv->isCurFuncReturned()){return;}
        llvm::errs() << "VisitDeclStmt.\n";
+       VisitStmt(declstmt);
        mEnv->decl(declstmt);
    }
 private:

@@ -14,8 +14,8 @@ Type: int
   + [x] ` =`
 + [ ] Statement
   + [ ] `BinaryOperator`,`UnaryOperator`
-  + [ ] `CallExpr`
-  + [ ] `IfStmt`
+  + [x] `CallExpr`
+  + [x] `IfStmt`
   + [ ] `WhileStmt`
   + [ ] `ReturnStmtb`
 + [ ] Built-in Functions
