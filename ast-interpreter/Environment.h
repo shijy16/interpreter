@@ -131,25 +131,43 @@ public:
     //    mStack.back().bindStmt(literalExpr,value);
     //}
     
-   int expr(Expr* expr){
-       expr = expr->IgnoreImpCasts();//magic
-        if(BinaryOperator* bop = dyn_cast<BinaryOperator>(expr)){
+   int expr(Expr* e){
+       e = e->IgnoreImpCasts();//magic
+        if(BinaryOperator* bop = dyn_cast<BinaryOperator>(e)){
             binop(bop);
             return mStack.back().getStmtVal(bop);
-        } else if (IntegerLiteral* integerLiteral = dyn_cast<IntegerLiteral>(expr)){
+        } else if (IntegerLiteral* integerLiteral = dyn_cast<IntegerLiteral>(e)){
             int value  = (int)integerLiteral->getValue().getSExtValue();
             return value;
-        } else if (DeclRefExpr* dref = dyn_cast<DeclRefExpr>(expr)){
+        } else if (DeclRefExpr* dref = dyn_cast<DeclRefExpr>(e)){
             declref(dref);
             int value = mStack.back().getStmtVal(dref);
             return value;
-        } else if (CallExpr* cexpr = dyn_cast<CallExpr>(expr)){
+        } else if (CallExpr* cexpr = dyn_cast<CallExpr>(e)){
             int value = mStack.back().getStmtVal(cexpr);
+            return value;
+        } else if (UnaryOperator* uo = dyn_cast<UnaryOperator>(e)){
+            int value = mStack.back().getStmtVal(uo);
+            return value;
+        } else if (ParenExpr* pe = dyn_cast<ParenExpr>(e)){
+            int value = mStack.back().getStmtVal(pe);
             return value;
         }
         else {
             return -1;
         }
+   }
+
+   void parenexpr(ParenExpr* pe){
+        Expr* e = pe->getSubExpr();
+        int value = expr(e);
+        mStack.back().bindStmt(pe,value);
+   }
+
+   void unaryop(UnaryOperator* uop){
+        Expr* e = uop->getSubExpr();
+        int value = expr(e);
+        mStack.back().bindStmt(uop, -value);
    }
 
 

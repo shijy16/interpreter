@@ -19,7 +19,6 @@ public:
    virtual ~InterpreterVisitor() {}
 
 
-   //visit ifStmt
    virtual void VisitIfStmt(IfStmt* ifstmt){
         if(mEnv->isCurFuncReturned()){return;}
         Expr* cond = ifstmt->getCond();
@@ -31,11 +30,22 @@ public:
         }
    }
 
+   virtual void VisitParenExpr (ParenExpr* pexpr){
+        if(mEnv->isCurFuncReturned()){return;}
+        VisitStmt(pexpr);
+        mEnv->parenexpr(pexpr);
+   }
+
    virtual void VisitBinaryOperator (BinaryOperator * bop) {
         if(mEnv->isCurFuncReturned()){return;}
        llvm::errs() << "VisitBinaryOperator.\n";
        VisitStmt(bop);
        mEnv->binop(bop);
+   }
+   virtual void VisitUnaryOperator (UnaryOperator* uop){
+        if(mEnv->isCurFuncReturned()){return;}
+        VisitStmt(uop);
+        mEnv->unaryop(uop);
    }
    virtual void VisitDeclRefExpr(DeclRefExpr * expr) {
         if(mEnv->isCurFuncReturned()){return;}
