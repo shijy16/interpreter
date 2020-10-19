@@ -24,7 +24,7 @@
 + [ ] Statement
   + [x] `CallExpr`
   + [x] `IfStmt`
-  + [ ] `WhileStmt`
+  + [x] `WhileStmt`
   + [ ] `ForStmt`
   + [x] `DeclStmt`
   + [x] `ReturnStmtb`
@@ -47,8 +47,8 @@
 + [x] 02
 + [x] 03
 + [x] 04
-+ [ ] 05
-+ [ ] 06
++ [x] 05
++ [x] 06
 + [ ] 07
 + [ ] 08
 + [ ] 09

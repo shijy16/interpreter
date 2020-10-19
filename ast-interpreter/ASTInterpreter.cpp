@@ -18,6 +18,16 @@ public:
    : EvaluatedExprVisitor(context), mEnv(env) {}
    virtual ~InterpreterVisitor() {}
 
+   virtual void VisitWhileStmt(WhileStmt* whilestmt){
+       if(mEnv->isCurFuncReturned()){return;}
+       Expr* cond = whilestmt->getCond();
+       int res = mEnv->expr(cond);
+       while(res == 1){
+           Visit(whilestmt->getBody());
+           res = mEnv->expr(cond);
+       }
+   }
+
 
    virtual void VisitIfStmt(IfStmt* ifstmt){
         if(mEnv->isCurFuncReturned()){return;}
