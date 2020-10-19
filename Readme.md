@@ -21,11 +21,11 @@
   + [x]  `=`
   + [ ]  `*`
   + [ ]  `[]`
-+ [ ] Statement
++ [x] Statement
   + [x] `CallExpr`
   + [x] `IfStmt`
   + [x] `WhileStmt`
-  + [ ] `ForStmt`
+  + [x] `ForStmt`
   + [x] `DeclStmt`
   + [x] `ReturnStmtb`
 + [ ] Expr
@@ -49,11 +49,11 @@
 + [x] 04
 + [x] 05
 + [x] 06
-+ [ ] 07
-+ [ ] 08
-+ [ ] 09
-+ [ ] 10
-+ [ ] 11
++ [x] 07
++ [x] 08
++ [x] 09
++ [x] 10
++ [x] 11
 + [ ] 12
 + [ ] 13
 + [ ] 14

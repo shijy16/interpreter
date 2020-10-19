@@ -21,22 +21,55 @@ public:
    virtual void VisitWhileStmt(WhileStmt* whilestmt){
        if(mEnv->isCurFuncReturned()){return;}
        Expr* cond = whilestmt->getCond();
+       Visit(cond);
        int res = mEnv->expr(cond);
        while(res == 1){
            Visit(whilestmt->getBody());
+           Visit(cond);
            res = mEnv->expr(cond);
+           if(mEnv->isCurFuncReturned()){return;}
        }
+   }
+
+   virtual void VisitForStmt(ForStmt* forstmt){
+        if(mEnv->isCurFuncReturned()){return;}
+
+        Stmt* initstmt = forstmt->getInit();
+        if(initstmt)
+            VisitStmt(initstmt);
+        Expr* cond = forstmt->getCond();
+        Expr* inc = forstmt->getInc();
+        Stmt* body = forstmt->getBody();
+        if(cond){
+            Visit(cond);
+            int res = mEnv->expr(cond);
+            while(res == 1){
+                Visit(body);
+                Visit(inc);
+                Visit(cond);
+                res = mEnv->expr(cond);
+                if(mEnv->isCurFuncReturned()){return;}
+            }
+        }else{
+            while(true){
+                Visit(body);
+                Visit(inc);
+                if(mEnv->isCurFuncReturned()){return;}
+            }
+        }
    }
 
 
    virtual void VisitIfStmt(IfStmt* ifstmt){
         if(mEnv->isCurFuncReturned()){return;}
         Expr* cond = ifstmt->getCond();
+        Visit(cond);
         int res = mEnv->expr(cond);
         if(res == 1){
             Visit(ifstmt->getThen());   //cannot use VisitStmt. donot know why
         }else{
-            Visit(ifstmt->getElse());
+            if(ifstmt->getElse())
+                Visit(ifstmt->getElse());
         }
    }
 
