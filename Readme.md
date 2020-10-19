@@ -1,5 +1,7 @@
 #  Interpreter Develop Log
 
+work in progress
+
 ### TODO LIST:
 
 + [x] Type
