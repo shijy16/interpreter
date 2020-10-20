@@ -16,31 +16,31 @@ class StackFrame {
     /// StackFrame maps Variable Declaration to Value
     /// Which are either integer or addresses (also represented using an Integer
     /// value)
-    std::map<Decl *, int> mVars;
-    std::map<Stmt *, int> mExprs;
+    std::map<Decl *, long> mVars;
+    std::map<Stmt *, long> mExprs;
     /// The current stmt
     Stmt *mPC;
-    int retValue = 0;
+    long retValue = 0;
     bool returned = false;
 
    public:
     StackFrame() : mVars(), mExprs(), mPC() {}
     bool findDecl(Decl *decl) { return mVars.find(decl) != mVars.end(); }
 
-    void bindDecl(Decl *decl, int val) {
+    void bindDecl(Decl *decl, long val) {
         // llvm::errs() << "binddecl:"<<val<<"\n";
         mVars[decl] = val;
     }
 
-    int getDeclVal(Decl *decl) {
+    long getDeclVal(Decl *decl) {
         assert(mVars.find(decl) != mVars.end());
         return mVars.find(decl)->second;
     }
-    void bindStmt(Stmt *stmt, int val) {
+    void bindStmt(Stmt *stmt, long val) {
         // llvm::errs() << "bindStmt "<<val<<"\n";
         mExprs[stmt] = val;
     }
-    int getStmtVal(Stmt *stmt) {
+    long getStmtVal(Stmt *stmt) {
         // llvm::errs() << "getStmtVal:"<<stmt<<"\n";
         assert(mExprs.find(stmt) != mExprs.end());
         return mExprs[stmt];
@@ -48,8 +48,8 @@ class StackFrame {
     void setPC(Stmt *stmt) { mPC = stmt; }
     Stmt *getPC() { return mPC; }
 
-    int getRetValue() { return retValue; }
-    void setRetValue(int v) { retValue = v; }
+    long getRetValue() { return retValue; }
+    void setRetValue(long v) { retValue = v; }
     void setReturned() { returned = true; }
     bool isReturned() { return returned; }
 };
@@ -127,43 +127,52 @@ class Environment {
     //    mStack.back().bindStmt(literalExpr,value);
     //}
 
-    int expr(Expr *e) {
-        e = e->IgnoreImpCasts();  // magic
+    long expr(Expr *exp) {
+        Expr* e = exp->IgnoreImpCasts();
         if (BinaryOperator *bop = dyn_cast<BinaryOperator>(e)) {
             binop(bop);
             return mStack.back().getStmtVal(bop);
         } else if (IntegerLiteral *integerLiteral =
                        dyn_cast<IntegerLiteral>(e)) {
-            int value = (int)integerLiteral->getValue().getSExtValue();
+            long value = (long)integerLiteral->getValue().getSExtValue();
             return value;
         } else if (DeclRefExpr *dref = dyn_cast<DeclRefExpr>(e)) {
-            declref(dref);
-            int value = mStack.back().getStmtVal(dref);
+            declref(dref); // have to do this. Global declref havn't been visited
+            long value = mStack.back().getStmtVal(dref);
             return value;
         } else if (CallExpr *cexpr = dyn_cast<CallExpr>(e)) {
-            int value = mStack.back().getStmtVal(cexpr);
+            long value = mStack.back().getStmtVal(cexpr);
             return value;
         } else if (UnaryOperator *uo = dyn_cast<UnaryOperator>(e)) {
-            int value = mStack.back().getStmtVal(uo);
+            long value = mStack.back().getStmtVal(uo);
             return value;
         } else if (ParenExpr *pe = dyn_cast<ParenExpr>(e)) {
-            int value = mStack.back().getStmtVal(pe);
+            long value = mStack.back().getStmtVal(pe);
+            return value;
+        } else if (ArraySubscriptExpr* ae = dyn_cast<ArraySubscriptExpr>(e)){
+            long value = mStack.back().getStmtVal(ae);
             return value;
         } else {
+            printf("Expr not hanled.\n\n");
             return -1;
         }
+        printf("expr finished\n\n");
     }
 
     void parenexpr(ParenExpr *pe) {
         Expr *e = pe->getSubExpr();
-        int value = expr(e);
+        long value = expr(e);
         mStack.back().bindStmt(pe, value);
     }
 
     void unaryop(UnaryOperator *uop) {
         Expr *e = uop->getSubExpr();
-        int value = expr(e);
-        mStack.back().bindStmt(uop, -value);
+        long value = expr(e);
+        if(uop->getOpcode() == UO_Plus){
+             mStack.back().bindStmt(uop,value);
+        }else if(uop->getOpcode() == UO_Minus){
+             mStack.back().bindStmt(uop, -value);
+        }
     }
 
     /// !TODO Support comparison operation
@@ -173,16 +182,30 @@ class Environment {
 
         //    llvm::errs() << "binop.\n";
         if (bop->isAssignmentOp()) {  // =
-            int val = expr(right);
+            long val = expr(right);
             mStack.back().bindStmt(left, val);
             if (DeclRefExpr *declexpr = dyn_cast<DeclRefExpr>(left)) {
                 Decl *decl = declexpr->getFoundDecl();
-                mStack.back().bindDecl(decl, val);
+                if(mStack.back().findDecl(decl))
+                    mStack.back().bindDecl(decl, val);
+                else
+                    mStack.front().bindDecl(decl,val);
+            } else if(ArraySubscriptExpr *aexpr = dyn_cast<ArraySubscriptExpr>(left)){
+                
+                long index = expr(aexpr->getIdx());
+                DeclRefExpr *declref = dyn_cast<DeclRefExpr>(aexpr->getLHS()->IgnoreImpCasts());
+                if(!declref) printf("ERROR: Array reference not known.\n");
+                Decl* decl = declref->getFoundDecl();
+                long temp =  mStack.back().findDecl(decl)
+                          ? mStack.back().getDeclVal(decl)
+                          : mStack.front().getDeclVal(decl);
+                long* arr = (long*)temp;
+                arr[index] = val;
             }
         } else if (bop->isAdditiveOp()) {  // + -
-            int valr = expr(right);
-            int vall = expr(left);
-            int res = 0;
+            long valr = expr(right);
+            long vall = expr(left);
+            long res = 0;
             if (bop->getOpcode() == BO_Add) {
                 res = vall + valr;
             } else {
@@ -190,9 +213,9 @@ class Environment {
             }
             mStack.back().bindStmt(bop, res);
         } else if (bop->isMultiplicativeOp()) {  // * /
-            int valr = expr(right);
-            int vall = expr(left);
-            int res = 0;
+            long valr = expr(right);
+            long vall = expr(left);
+            long res = 0;
             if (bop->getOpcode() == BO_Mul) {
                 res = vall * valr;
             } else {
@@ -200,9 +223,9 @@ class Environment {
             }
             mStack.back().bindStmt(bop, res);
         } else if (bop->isComparisonOp()) {  // > < >= <= == !=
-            int valr = expr(right);
-            int vall = expr(left);
-            int res = 0;
+            long valr = expr(right);
+            long vall = expr(left);
+            long res = 0;
             switch (bop->getOpcode()) {
                 case BO_GT:
                     res = (vall > valr);
@@ -233,13 +256,23 @@ class Environment {
     // handle var delarations.
     void vardecl(VarDecl *vdecl, StackFrame *sf) {
         if (vdecl->getType().getTypePtr()->isIntegerType()) {
-            int value = 0;
+            long value = 0;
             if (vdecl->hasInit()) {
                 Expr *e = vdecl->getInit();
                 value = expr(e);
-                printf("vardecl %d\n", value);
             }
             sf->bindDecl(vdecl, value);
+        } else if(vdecl->getType().getTypePtr()->isArrayType()){
+            const ConstantArrayType* atype = dyn_cast<ConstantArrayType>(vdecl->getType().getTypePtr());
+            int asize = atype->getSize().getSExtValue();
+            if(asize <= 0){
+                llvm::errs()<<"Error: Invalid Array Size "<<asize<<".\n";
+            }
+            if(atype->getElementType().getTypePtr()->isIntegerType()){
+                long* temp = new long[asize];
+                for(int i = 0;i < asize;i++) temp[i] = 0;
+                sf->bindDecl(vdecl,(long)temp);
+            }
         } else {
             sf->bindDecl(vdecl, 0);
         }
@@ -257,24 +290,54 @@ class Environment {
         }
     }
     void declref(DeclRefExpr *declref) {
-        llvm::errs() << "\t in declref\n";
         mStack.back().setPC(declref);
         if (declref->getType()->isIntegerType()) {
-            Decl *decl = declref->getFoundDecl();
+    Decl *decl = declref->getFoundDecl();
             // global or local value
-            int val = mStack.back().findDecl(decl)
+            long val = mStack.back().findDecl(decl)
                           ? mStack.back().getDeclVal(decl)
                           : mStack.front().getDeclVal(decl);
-            printf("\tdecl::%d\n", val);
             mStack.back().bindStmt(declref, val);
         }
+        printf("declref finished\n\n");
+/*
+        else if(declref->getType()->isArrayType()){
+            Decl *decl = declref->getFoundDecl();
+            declref->getRHS();
+            ArraySubscriptExpr* array = dyn_cast<ArraySubscriptExpr>(declref->IgnoreImpCasts());
+            printf("casts:%x\n",array);
+            long index = 0;
+            index = expr(array->getIdx());
+            // global or local value
+            long temp =  mStack.back().findDecl(decl)
+                          ? mStack.back().getDeclVal(decl)
+                          : mStack.front().getDeclVal(decl);
+            long* arr = (long*)temp;
+            mStack.back().bindStmt(declref, arr[index]);
+        }
+*/
     }
+
+    void arrayref(ArraySubscriptExpr* aexpr){
+        long index = expr(aexpr->getIdx());
+        DeclRefExpr *declref = dyn_cast<DeclRefExpr>(aexpr->getLHS()->IgnoreImpCasts());
+        if(!declref) printf("ERROR: Array reference not known.\n");
+        Decl* decl = declref->getFoundDecl();
+        long temp =  mStack.back().findDecl(decl)
+                      ? mStack.back().getDeclVal(decl)
+                      : mStack.front().getDeclVal(decl);
+        long* arr = (long*)temp;
+        mStack.back().bindStmt(aexpr, arr[index]);
+    }
+
+
 
     void cast(CastExpr *castexpr) {
         mStack.back().setPC(castexpr);
         if (castexpr->getType()->isIntegerType()) {
+            printf("cast\n\n");
             Expr *expr = castexpr->getSubExpr();
-            int val = mStack.back().getStmtVal(expr);
+            long val = mStack.back().getStmtVal(expr);
             mStack.back().bindStmt(castexpr, val);
         }
     }
@@ -284,8 +347,7 @@ class Environment {
         if (callee->isNoReturn()) {
             mStack.pop_back();
         } else {
-            int rval = mStack.back().getRetValue();
-            printf("pop stack:%d\n", rval);
+            long rval = mStack.back().getRetValue();
             mStack.pop_back();
             mStack.back().bindStmt(callexpr, rval);
         }
@@ -295,7 +357,7 @@ class Environment {
     void retstmt(ReturnStmt *rstmt) {
         Expr *rexpr = rstmt->getRetValue();
         if (rexpr) {
-            int rval = expr(rexpr);
+            long rval = expr(rexpr);
             mStack.back().setRetValue(rval);
         }
         mStack.back().setReturned();
@@ -306,15 +368,16 @@ class Environment {
     void call(CallExpr *callexpr) {
         llvm::errs() << "\t in call\n";
         mStack.back().setPC(callexpr);
-        int val = 0;
+        long val = 0;
         FunctionDecl *callee = callexpr->getDirectCallee();
         if (callee == mInput) {
             llvm::errs() << "Please Input an Integer Value : ";
-            scanf("%d", &val);
+            scanf("%ld", &val);
 
             mStack.back().bindStmt(callexpr, val);
         } else if (callee == mOutput) {
             Expr *e = callexpr->getArg(0);
+            printf("here\n\n");
             val = expr(e);
             llvm::errs() << "==========OUTPUT:" << val << "\n";
         } else {
@@ -323,7 +386,7 @@ class Environment {
             unsigned param_num = callee->getNumParams();
             for (unsigned i = 0; i < param_num; i++) {
                 Expr *e = callexpr->getArg(i);
-                int val = expr(e);
+                long val = expr(e);
                 VarDecl *vd = dyn_cast<VarDecl>(callee->getParamDecl(i));
                 vardecl(vd, &calleeStack);
                 calleeStack.bindDecl(vd, val);

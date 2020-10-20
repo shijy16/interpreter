@@ -5,6 +5,7 @@ extern void PRINT(int);
 
 int main() {
 	int a[3];
+    PRINT(a[0]);
         int i;
 	int b = 0;
         for (i=0; i<3; i = i + 1) {

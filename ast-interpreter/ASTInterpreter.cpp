@@ -113,6 +113,17 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         VisitStmt(expr);
         mEnv->declref(expr);
     }
+
+    virtual void VisitArraySubscriptExpr(ArraySubscriptExpr *expr) {
+        if (mEnv->isCurFuncReturned()) {
+            return;
+        }
+        printf("Visit Array\n\n");
+        Visit(expr->getLHS());
+        Visit(expr->getRHS());
+        mEnv->arrayref(expr);
+    }
+
     virtual void VisitCastExpr(CastExpr *expr) {
         if (mEnv->isCurFuncReturned()) {
             return;
@@ -121,6 +132,7 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         VisitStmt(expr);
         mEnv->cast(expr);
     }
+
     virtual void VisitReturnStmt(ReturnStmt *rets) {
         llvm::errs() << "VisitRtnStmt.\n";
         if (mEnv->isCurFuncReturned()) {
@@ -142,7 +154,7 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         if (callee->hasBody()) {
             VisitStmt(callee->getBody());
         }
-        // default return here
+        // return here
         mEnv->ret(call);
     }
 
