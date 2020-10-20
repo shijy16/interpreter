@@ -1,12 +1,14 @@
 #  Interpreter Develop Log
 
+work in progress
+
 ### TODO LIST:
 
 + [x] Type
   + [x] int
   + [x] void
   + [] char
-  + [] *
+  + [] * `pointer`
 
 + [x] Operator:
   + [x]  `*`
@@ -19,8 +21,8 @@
   + [x]  `<=`
   + [x]  `==`
   + [x]  `=`
-  + [ ]  `*`
-  + [ ]  `[]`
+  + [ ]  `*` 
+  + [x]  `[]`
 + [x] Statement
   + [x] `CallExpr`
   + [x] `IfStmt`
@@ -54,11 +56,11 @@
 + [x] 09
 + [x] 10
 + [x] 11
-+ [ ] 12
-+ [ ] 13
-+ [ ] 14
-+ [ ] 15
-+ [ ] 16
++ [x] 12
++ [x] 13
++ [x] 14
++ [x] 15
++ [x] 16
 + [ ] 17
 + [ ] 18
 + [ ] 19
