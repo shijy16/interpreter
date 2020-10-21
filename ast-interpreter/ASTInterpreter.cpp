@@ -129,7 +129,7 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
             return;
         }
         llvm::errs() << "VisitCastExpr.\n";
-        VisitStmt(expr);
+        Visit(expr->getSubExpr());
         mEnv->cast(expr);
     }
 
@@ -176,6 +176,13 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         if(tte->getKind() == UETT_SizeOf){
             mEnv->sizeofexpr(tte);
         }
+    }
+
+    virtual void VisitIntegerLiteral(IntegerLiteral* il){
+        if (mEnv->isCurFuncReturned()) {
+            return;
+        }
+        mEnv->integerLiteral(il);
     }
 
    private:

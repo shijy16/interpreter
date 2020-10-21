@@ -161,11 +161,10 @@ class Environment {
     FunctionDecl *getEntry() { return mEntry; }
 
     // bind int literal stmt and value
-    // void integerLiteral(IntegerLiteral* literal){
-    //    Expr* literalExpr = dyn_cast<Expr>(literal);
-    //    int value = (int)literal->getValue().getLimitedValue();
-    //    mStack.back().bindStmt(literalExpr,value);
-    //}
+    void integerLiteral(IntegerLiteral* literal){
+        long value = (long) literal->getValue().getLimitedValue();
+        mStack.back().bindStmt(literal,value);
+    }
 
     long expr(Expr *exp) {
         Expr* e = exp->IgnoreImpCasts();
@@ -175,6 +174,7 @@ class Environment {
         } else if (IntegerLiteral *integerLiteral =
                        dyn_cast<IntegerLiteral>(e)) {
             long value = (long)integerLiteral->getValue().getSExtValue();
+            //long value = mStack.back().getStmtVal(integerLiteral);
             return value;
         } else if (DeclRefExpr *dref = dyn_cast<DeclRefExpr>(e)) {
             declref(dref); // have to do this. Global declref havn't been visited
@@ -198,7 +198,7 @@ class Environment {
         } else if (CStyleCastExpr* cce = dyn_cast<CStyleCastExpr>(e)){
             //long addr = expr(cce->getSubExpr());
             //long* addr = (long*) t;
-            long value = mStack.back().getStmtVal(cce->getSubExpr());
+            long value = expr(cce->getSubExpr());
             return value;
         }
         else {
@@ -238,7 +238,6 @@ class Environment {
         //    llvm::errs() << "binop.\n";
         if (bop->isAssignmentOp()) {  // =
             long val = expr(right);
-            printf("bind %lx\n",val);
             if (DeclRefExpr *declexpr = dyn_cast<DeclRefExpr>(left)) {
                 mStack.back().bindStmt(left, val);
                 Decl *decl = declexpr->getFoundDecl();
@@ -261,12 +260,17 @@ class Environment {
                 long* addr = (long *)lval;
                 mHeap->Update(addr,val);
             } else {
-                printf("here\n");
+                printf("shouldn't be here\n");
             }
         } else if (bop->isAdditiveOp()) {  // + -
             long valr = expr(right);
             long vall = expr(left);
             long res = 0;
+            if(left->getType().getTypePtr()->isPointerType() && !right->getType().getTypePtr()->isPointerType()){
+                valr *= sizeof(long);
+            }else if(!right->getType().getTypePtr()->isPointerType() && left->getType().getTypePtr()->isPointerType()){
+                vall *= sizeof(long);
+            }
             if (bop->getOpcode() == BO_Add) {
                 res = vall + valr;
             } else {
@@ -333,6 +337,10 @@ class Environment {
                 long* temp = new long[asize];
                 for(int i = 0;i < asize;i++) temp[i] = 0;
                 sf->bindDecl(vdecl,(long)temp);
+            }else if(atype->getElementType().getTypePtr()->isPointerType()){
+                long** temp = new long*[asize];
+                for(int i = 0;i < asize;i++) temp[i] = 0;
+                sf->bindDecl(vdecl,(long)temp);
             }
         } else if(vdecl->getType().getTypePtr()->isPointerType()){
             long value = 0;
@@ -366,6 +374,9 @@ class Environment {
                           ? mStack.back().getDeclVal(decl)
                           : mStack.front().getDeclVal(decl);
             mStack.back().bindStmt(declref, val);
+            printf("declref:%lx\n",val);
+        }else{
+        //    printf("wtf!\n");
         }
 /*
         else if(declref->getType()->isArrayType()){
@@ -406,7 +417,7 @@ class Environment {
             long val = mStack.back().getStmtVal(expr);
             mStack.back().bindStmt(castexpr, val);
         }else if(castexpr->getType()->isPointerType()){
-            printf("Pointer\n");
+            //printf("Pointer\n");
         }
     }
 

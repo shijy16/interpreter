@@ -7,8 +7,8 @@ work in progress
 + [x] Type
   + [x] int
   + [x] void
-  + [] char
-  + [] * `pointer`
+  + [ ] char
+  + [x] * `pointer`
 
 + [x] Operator:
   + [x]  `*`
@@ -21,7 +21,7 @@ work in progress
   + [x]  `<=`
   + [x]  `==`
   + [x]  `=`
-  + [ ]  `*` 
+  + [x]  `*` 
   + [x]  `[]`
 + [x] Statement
   + [x] `CallExpr`
@@ -36,11 +36,11 @@ work in progress
   + [x] `DeclRefExpr`
   + [x] `CallExpr`
   + [ ] `CastExpr`
-+ [ ] Built-in Functions
++ [x] Built-in Functions
   + [ ] `GET()`
   + [x] `PRINT(int a)`
   + [x] `MALLOC(int a)`
-  + [ ] `FREE()`
+  + [x] `FREE()`
 
 ### Testcases AC:
 
@@ -61,7 +61,7 @@ work in progress
 + [x] 14
 + [x] 15
 + [x] 16
-+ [ ] 17
-+ [ ] 18
-+ [ ] 19
++ [x] 17
++ [x] 18
++ [x] 19
 
