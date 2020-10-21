@@ -59,36 +59,41 @@ class Heap {
     std::map<long*,int> block;
 public:
     long* Malloc(int size){
-        long* t = malloc(size);
+        long* t = (long*) malloc(size);
+        printf("malloc %d at 0x%lx.\n",size,t);
         block[t] = size;
         return t;
     }
    void Free (long* addr){
-        if(block.find(addr) != block.end()){
-            printf("Error:Free invalid address:0x%x\n",addr);
+        if(block.find(addr) == block.end()){
+            printf("Error:Free invalid address:0x%lx\n",addr);
         }
         free(addr);
+        printf("free 0x%lx.\n",addr);
    }
    void Update(long* addr, long val){
        bool valid = check(addr);
-        if(valid)
+        if(valid){
             *addr = val;
+            printf("Update 0x%lx to %ld.\n",addr,val);
+        }
         else
-            printf("Error:Update invalid address:0x%x\n",addr);
+            printf("Error:Update invalid address:0x%lx\n",addr);
    }
-   long get(long* addr){
+   long Get(long* addr){
         bool valid = check(addr);
         if(valid){
+            printf("GET:0x%lx,value:%ld.\n",addr,*addr);
             return *addr;
         } else {
-            printf("Error:Get value of invalid address:0x%x\n",addr);
+            printf("Error:Get value of invalid address:0x%lx\n",addr);
             return -1;
         }
    }
    bool check(long* addr){
        bool valid = false;
-        for(std::map<long*,int> iter = block.begin(); iter != block.end();iter++){
-            if(addr >= iter->first && addr <= (long*)((long)iter->first + (long)second)){
+        for(std::map<long*,int>::iterator iter = block.begin(); iter != block.end();iter++){
+            if((long)(addr) >= (long)(iter->first) && (long)addr <= (long)(iter->first) + (long)(iter->second)){
                 valid = true;
                 break;
             }
@@ -107,6 +112,8 @@ class Environment {
 
     FunctionDecl *mEntry;
 
+    Heap* mHeap;
+
    public:
     /// Get the declartions to the built-in functions
     Environment()
@@ -120,6 +127,7 @@ class Environment {
     /// Initialize the Environment
     void init(TranslationUnitDecl *unit) {
         // global stackframe
+        mHeap = new Heap();
         mStack.push_back(StackFrame());
         for (TranslationUnitDecl::decl_iterator i = unit->decls_begin(),
                                                 e = unit->decls_end();
@@ -187,6 +195,11 @@ class Environment {
         } else if (UnaryExprOrTypeTraitExpr* tte = dyn_cast<UnaryExprOrTypeTraitExpr>(e)){
             long value = mStack.back().getStmtVal(tte);
             return value;
+        } else if (CStyleCastExpr* cce = dyn_cast<CStyleCastExpr>(e)){
+            //long addr = expr(cce->getSubExpr());
+            //long* addr = (long*) t;
+            long value = mStack.back().getStmtVal(cce->getSubExpr());
+            return value;
         }
         else {
             printf("Expr not hanled.\n");
@@ -212,6 +225,8 @@ class Environment {
              mStack.back().bindStmt(uop,value);
         }else if(uop->getOpcode() == UO_Minus){
              mStack.back().bindStmt(uop, -value);
+        }else if(uop->getOpcode() == UO_Deref){
+            mStack.back().bindStmt(uop,mHeap->Get((long*)value));
         }
     }
 
@@ -223,15 +238,15 @@ class Environment {
         //    llvm::errs() << "binop.\n";
         if (bop->isAssignmentOp()) {  // =
             long val = expr(right);
-            mStack.back().bindStmt(left, val);
+            printf("bind %lx\n",val);
             if (DeclRefExpr *declexpr = dyn_cast<DeclRefExpr>(left)) {
+                mStack.back().bindStmt(left, val);
                 Decl *decl = declexpr->getFoundDecl();
                 if(mStack.back().findDecl(decl))
                     mStack.back().bindDecl(decl, val);
                 else
                     mStack.front().bindDecl(decl,val);
             } else if(ArraySubscriptExpr *aexpr = dyn_cast<ArraySubscriptExpr>(left)){
-                
                 long index = expr(aexpr->getIdx());
                 DeclRefExpr *declref = dyn_cast<DeclRefExpr>(aexpr->getLHS()->IgnoreImpCasts());
                 if(!declref) printf("ERROR: Array reference not known.\n");
@@ -241,6 +256,12 @@ class Environment {
                           : mStack.front().getDeclVal(decl);
                 long* arr = (long*)temp;
                 arr[index] = val;
+            } else if(UnaryOperator *uope = dyn_cast<UnaryOperator>(left)) {
+                long lval = expr(uope->getSubExpr());
+                long* addr = (long *)lval;
+                mHeap->Update(addr,val);
+            } else {
+                printf("here\n");
             }
         } else if (bop->isAdditiveOp()) {  // + -
             long valr = expr(right);
@@ -338,8 +359,8 @@ class Environment {
     }
     void declref(DeclRefExpr *declref) {
         mStack.back().setPC(declref);
-        if (declref->getType()->isIntegerType()) {
-    Decl *decl = declref->getFoundDecl();
+        if (declref->getType()->isIntegerType() || declref->getType()->isPointerType()) {
+            Decl *decl = declref->getFoundDecl();
             // global or local value
             long val = mStack.back().findDecl(decl)
                           ? mStack.back().getDeclVal(decl)
@@ -384,6 +405,8 @@ class Environment {
             Expr *expr = castexpr->getSubExpr();
             long val = mStack.back().getStmtVal(expr);
             mStack.back().bindStmt(castexpr, val);
+        }else if(castexpr->getType()->isPointerType()){
+            printf("Pointer\n");
         }
     }
 
@@ -427,9 +450,13 @@ class Environment {
         } else if (callee == mMalloc) {
             Expr *e = callexpr->getArg(0);
             val = expr(e);
+            long* addr = mHeap->Malloc(val);
+            mStack.back().bindStmt(callexpr,(long)addr);
         } else if (callee == mFree) {
             Expr *e = callexpr->getArg(0);
             val = expr(e);
+            long* addr = (long*) val;
+            mHeap->Free(addr);
         }
 
         else {
