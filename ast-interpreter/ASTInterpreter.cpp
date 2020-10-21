@@ -167,6 +167,17 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         mEnv->decl(declstmt);
     }
 
+    virtual void VisitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr* tte){
+        if (mEnv->isCurFuncReturned()) {
+            return;
+        }
+        printf("sizeof expr\n");
+        VisitStmt(tte);
+        if(tte->getKind() == UETT_SizeOf){
+            mEnv->sizeofexpr(tte);
+        }
+    }
+
    private:
     Environment *mEnv;
 };

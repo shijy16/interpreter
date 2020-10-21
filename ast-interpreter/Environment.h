@@ -55,15 +55,47 @@ class StackFrame {
 };
 
 /// Heap maps address to a value
-/*
 class Heap {
+    std::map<long*,int> block;
 public:
-   int Malloc(int size) ;
-   void Free (int addr) ;
-   void Update(int addr, int val) ;
-   int get(int addr);
+    long* Malloc(int size){
+        long* t = malloc(size);
+        block[t] = size;
+        return t;
+    }
+   void Free (long* addr){
+        if(block.find(addr) != block.end()){
+            printf("Error:Free invalid address:0x%x\n",addr);
+        }
+        free(addr);
+   }
+   void Update(long* addr, long val){
+       bool valid = check(addr);
+        if(valid)
+            *addr = val;
+        else
+            printf("Error:Update invalid address:0x%x\n",addr);
+   }
+   long get(long* addr){
+        bool valid = check(addr);
+        if(valid){
+            return *addr;
+        } else {
+            printf("Error:Get value of invalid address:0x%x\n",addr);
+            return -1;
+        }
+   }
+   bool check(long* addr){
+       bool valid = false;
+        for(std::map<long*,int> iter = block.begin(); iter != block.end();iter++){
+            if(addr >= iter->first && addr <= (long*)((long)iter->first + (long)second)){
+                valid = true;
+                break;
+            }
+        }
+        return valid;
+   }
 };
-*/
 
 class Environment {
     std::vector<StackFrame> mStack;
@@ -152,17 +184,25 @@ class Environment {
         } else if (ArraySubscriptExpr* ae = dyn_cast<ArraySubscriptExpr>(e)){
             long value = mStack.back().getStmtVal(ae);
             return value;
-        } else {
-            printf("Expr not hanled.\n\n");
+        } else if (UnaryExprOrTypeTraitExpr* tte = dyn_cast<UnaryExprOrTypeTraitExpr>(e)){
+            long value = mStack.back().getStmtVal(tte);
+            return value;
+        }
+        else {
+            printf("Expr not hanled.\n");
             return -1;
         }
-        printf("expr finished\n\n");
     }
 
     void parenexpr(ParenExpr *pe) {
         Expr *e = pe->getSubExpr();
         long value = expr(e);
         mStack.back().bindStmt(pe, value);
+    }
+
+    void sizeofexpr(UnaryExprOrTypeTraitExpr* tte){
+        long value = sizeof(long);
+        mStack.back().bindStmt(tte, value);
     }
 
     void unaryop(UnaryOperator *uop) {
@@ -273,13 +313,20 @@ class Environment {
                 for(int i = 0;i < asize;i++) temp[i] = 0;
                 sf->bindDecl(vdecl,(long)temp);
             }
-        } else {
+        } else if(vdecl->getType().getTypePtr()->isPointerType()){
+            long value = 0;
+            if (vdecl->hasInit()) {
+                Expr *e = vdecl->getInit();
+                value = expr(e);
+            }
+            sf->bindDecl(vdecl,value);
+        }
+        else {
             sf->bindDecl(vdecl, 0);
         }
     }
 
     void decl(DeclStmt *declstmt) {
-        llvm::errs() << "\tdecl\n";
         for (DeclStmt::decl_iterator it = declstmt->decl_begin(),
                                      ie = declstmt->decl_end();
              it != ie; ++it) {
@@ -299,7 +346,6 @@ class Environment {
                           : mStack.front().getDeclVal(decl);
             mStack.back().bindStmt(declref, val);
         }
-        printf("declref finished\n\n");
 /*
         else if(declref->getType()->isArrayType()){
             Decl *decl = declref->getFoundDecl();
@@ -335,7 +381,6 @@ class Environment {
     void cast(CastExpr *castexpr) {
         mStack.back().setPC(castexpr);
         if (castexpr->getType()->isIntegerType()) {
-            printf("cast\n\n");
             Expr *expr = castexpr->getSubExpr();
             long val = mStack.back().getStmtVal(expr);
             mStack.back().bindStmt(castexpr, val);
@@ -351,7 +396,7 @@ class Environment {
             mStack.pop_back();
             mStack.back().bindStmt(callexpr, rval);
         }
-        printf("ret here\n");
+        printf("\tret\n");
     }
 
     void retstmt(ReturnStmt *rstmt) {
@@ -361,12 +406,12 @@ class Environment {
             mStack.back().setRetValue(rval);
         }
         mStack.back().setReturned();
-        printf("retstmt\n");
+        printf("\tretstmt\n");
     }
 
     /// !TODO Support Function Call
     void call(CallExpr *callexpr) {
-        llvm::errs() << "\t in call\n";
+        printf("\tcall\n");
         mStack.back().setPC(callexpr);
         long val = 0;
         FunctionDecl *callee = callexpr->getDirectCallee();
@@ -377,10 +422,17 @@ class Environment {
             mStack.back().bindStmt(callexpr, val);
         } else if (callee == mOutput) {
             Expr *e = callexpr->getArg(0);
-            printf("here\n\n");
             val = expr(e);
             llvm::errs() << "==========OUTPUT:" << val << "\n";
-        } else {
+        } else if (callee == mMalloc) {
+            Expr *e = callexpr->getArg(0);
+            val = expr(e);
+        } else if (callee == mFree) {
+            Expr *e = callexpr->getArg(0);
+            val = expr(e);
+        }
+
+        else {
             /// You could add your code here for Function call Return
             StackFrame calleeStack = StackFrame();
             unsigned param_num = callee->getNumParams();
