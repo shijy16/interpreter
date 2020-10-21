@@ -129,7 +129,7 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
             return;
         }
         llvm::errs() << "VisitCastExpr.\n";
-        Visit(expr->getSubExpr());
+        VisitStmt(expr);
         mEnv->cast(expr);
     }
 
