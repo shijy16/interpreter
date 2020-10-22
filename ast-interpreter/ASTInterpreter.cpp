@@ -94,7 +94,7 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
-        llvm::errs() << "VisitBinaryOperator.\n";
+        //llvm::errs() << "VisitBinaryOperator.\n";
         VisitStmt(bop);
         mEnv->binop(bop);
     }
@@ -109,7 +109,7 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
-        llvm::errs() << "VisitDeclRefExpr.\n";
+        //llvm::errs() << "VisitDeclRefExpr.\n";
         VisitStmt(expr);
         mEnv->declref(expr);
     }
@@ -118,7 +118,7 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
-        printf("Visit Array\n\n");
+        //printf("Visit Array\n\n");
         Visit(expr->getLHS());
         Visit(expr->getRHS());
         mEnv->arrayref(expr);
@@ -128,13 +128,13 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
-        llvm::errs() << "VisitCastExpr.\n";
+        //llvm::errs() << "VisitCastExpr.\n";
         VisitStmt(expr);
         mEnv->cast(expr);
     }
 
     virtual void VisitReturnStmt(ReturnStmt *rets) {
-        llvm::errs() << "VisitRtnStmt.\n";
+        //llvm::errs() << "VisitRtnStmt.\n";
         if (mEnv->isCurFuncReturned()) {
             return;
         }
@@ -146,7 +146,7 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
-        llvm::errs() << "VisitCallExpr.\n";
+        //llvm::errs() << "VisitCallExpr.\n";
         VisitStmt(call);
         mEnv->call(call);
         FunctionDecl *callee = call->getCalleeDecl()->getAsFunction();
@@ -162,35 +162,34 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
-        llvm::errs() << "VisitDeclStmt.\n";
+        //llvm::errs() << "VisitDeclStmt.\n";
         VisitStmt(declstmt);
         mEnv->decl(declstmt);
     }
 
-    virtual void VisitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr* tte){
+    virtual void VisitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr *tte) {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
-        printf("sizeof expr\n");
+        //printf("sizeof expr\n");
         VisitStmt(tte);
-        if(tte->getKind() == UETT_SizeOf){
+        if (tte->getKind() == UETT_SizeOf) {
             mEnv->sizeofexpr(tte);
         }
     }
 
-    virtual void VisitIntegerLiteral(IntegerLiteral* il){
+    virtual void VisitIntegerLiteral(IntegerLiteral *il) {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
         mEnv->integerLiteral(il);
     }
 
-    virtual void VisitCharacterLiteral(CharacterLiteral* cl){
+    virtual void VisitCharacterLiteral(CharacterLiteral *cl) {
         if (mEnv->isCurFuncReturned()) {
             return;
         }
         mEnv->characterLiteral(cl);
-        
     }
 
    private:

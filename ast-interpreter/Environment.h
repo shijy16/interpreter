@@ -56,50 +56,52 @@ class StackFrame {
 
 /// Heap maps address to a value
 class Heap {
-    std::map<long*,int> block;
-public:
-    long* Malloc(int size){
-        long* t = (long*) malloc(size);
-        printf("malloc %d at 0x%lx.\n",size,t);
+    std::map<long *, int> block;
+
+   public:
+    long *Malloc(int size) {
+        long *t = (long *)malloc(size);
+        //printf("malloc %d at 0x%p.\n", size, t);
         block[t] = size;
         return t;
     }
-   void Free (long* addr){
-        if(block.find(addr) == block.end()){
-            printf("Error:Free invalid address:0x%lx\n",addr);
+    void Free(long *addr) {
+        if (block.find(addr) == block.end()) {
+            printf("Error:Free invalid address:0x%p\n", addr);
         }
         free(addr);
-        printf("free 0x%lx.\n",addr);
-   }
-   void Update(long* addr, long val){
-       bool valid = check(addr);
-        if(valid){
-            *addr = val;
-            printf("Update 0x%lx to %ld.\n",addr,val);
-        }
-        else
-            printf("Error:Update invalid address:0x%lx\n",addr);
-   }
-   long Get(long* addr){
+        //printf("free 0x%p.\n", addr);
+    }
+    void Update(long *addr, long val) {
         bool valid = check(addr);
-        if(valid){
-            printf("GET:0x%lx,value:%ld.\n",addr,*addr);
+        if (valid) {
+            *addr = val;
+            //printf("Update 0x%p to %ld.\n", addr, val);
+        } else
+            printf("Error:Update invalid address:0x%p\n", addr);
+    }
+    long Get(long *addr) {
+        bool valid = check(addr);
+        if (valid) {
+            //printf("GET:0x%p,value:%ld.\n", addr, *addr);
             return *addr;
         } else {
-            printf("Error:Get value of invalid address:0x%lx\n",addr);
+            printf("Error:Get value of invalid address:0x%p\n", addr);
             return -1;
         }
-   }
-   bool check(long* addr){
-       bool valid = false;
-        for(std::map<long*,int>::iterator iter = block.begin(); iter != block.end();iter++){
-            if((long)(addr) >= (long)(iter->first) && (long)addr <= (long)(iter->first) + (long)(iter->second)){
+    }
+    bool check(long *addr) {
+        bool valid = false;
+        for (std::map<long *, int>::iterator iter = block.begin();
+             iter != block.end(); iter++) {
+            if ((long)(addr) >= (long)(iter->first) &&
+                (long)addr <= (long)(iter->first) + (long)(iter->second)) {
                 valid = true;
                 break;
             }
         }
         return valid;
-   }
+    }
 };
 
 class Environment {
@@ -112,7 +114,7 @@ class Environment {
 
     FunctionDecl *mEntry;
 
-    Heap* mHeap;
+    Heap *mHeap;
 
    public:
     /// Get the declartions to the built-in functions
@@ -161,32 +163,32 @@ class Environment {
     FunctionDecl *getEntry() { return mEntry; }
 
     // bind int literal stmt and value
-    void integerLiteral(IntegerLiteral* literal){
-        long value = (long) literal->getValue().getLimitedValue();
-        mStack.back().bindStmt(literal,value);
+    void integerLiteral(IntegerLiteral *literal) {
+        long value = (long)literal->getValue().getLimitedValue();
+        mStack.back().bindStmt(literal, value);
     }
 
-    void characterLiteral(CharacterLiteral* cl){
-        long value = (long) cl->getValue();
-        printf("%ld,%c\n",value,(char)value);
-        mStack.back().bindStmt(cl,value);
+    void characterLiteral(CharacterLiteral *cl) {
+        long value = (long)cl->getValue();
+        mStack.back().bindStmt(cl, value);
     }
 
     long expr(Expr *exp) {
-        Expr* e = exp->IgnoreImpCasts();
+        Expr *e = exp->IgnoreImpCasts();
         if (BinaryOperator *bop = dyn_cast<BinaryOperator>(e)) {
             binop(bop);
             return mStack.back().getStmtVal(bop);
         } else if (IntegerLiteral *integerLiteral =
                        dyn_cast<IntegerLiteral>(e)) {
             long value = (long)integerLiteral->getValue().getSExtValue();
-            //long value = mStack.back().getStmtVal(integerLiteral);
+            // long value = mStack.back().getStmtVal(integerLiteral);
             return value;
-        } else if (CharacterLiteral *cl = dyn_cast<CharacterLiteral>(e)){
+        } else if (CharacterLiteral *cl = dyn_cast<CharacterLiteral>(e)) {
             long value = cl->getValue();
             return value;
         } else if (DeclRefExpr *dref = dyn_cast<DeclRefExpr>(e)) {
-            declref(dref); // have to do this. Global declref havn't been visited
+            declref(
+                dref);  // have to do this. Global declref havn't been visited
             long value = mStack.back().getStmtVal(dref);
             return value;
         } else if (CallExpr *cexpr = dyn_cast<CallExpr>(e)) {
@@ -198,19 +200,19 @@ class Environment {
         } else if (ParenExpr *pe = dyn_cast<ParenExpr>(e)) {
             long value = mStack.back().getStmtVal(pe);
             return value;
-        } else if (ArraySubscriptExpr* ae = dyn_cast<ArraySubscriptExpr>(e)){
+        } else if (ArraySubscriptExpr *ae = dyn_cast<ArraySubscriptExpr>(e)) {
             long value = mStack.back().getStmtVal(ae);
             return value;
-        } else if (UnaryExprOrTypeTraitExpr* tte = dyn_cast<UnaryExprOrTypeTraitExpr>(e)){
+        } else if (UnaryExprOrTypeTraitExpr *tte =
+                       dyn_cast<UnaryExprOrTypeTraitExpr>(e)) {
             long value = mStack.back().getStmtVal(tte);
             return value;
-        } else if (CStyleCastExpr* cce = dyn_cast<CStyleCastExpr>(e)){
-            //long addr = expr(cce->getSubExpr());
-            //long* addr = (long*) t;
+        } else if (CStyleCastExpr *cce = dyn_cast<CStyleCastExpr>(e)) {
+            // long addr = expr(cce->getSubExpr());
+            // long* addr = (long*) t;
             long value = expr(cce->getSubExpr());
             return value;
-        }
-        else {
+        } else {
             printf("Expr not hanled.\n");
             return -1;
         }
@@ -222,7 +224,7 @@ class Environment {
         mStack.back().bindStmt(pe, value);
     }
 
-    void sizeofexpr(UnaryExprOrTypeTraitExpr* tte){
+    void sizeofexpr(UnaryExprOrTypeTraitExpr *tte) {
         long value = sizeof(long);
         mStack.back().bindStmt(tte, value);
     }
@@ -230,12 +232,12 @@ class Environment {
     void unaryop(UnaryOperator *uop) {
         Expr *e = uop->getSubExpr();
         long value = expr(e);
-        if(uop->getOpcode() == UO_Plus){
-             mStack.back().bindStmt(uop,value);
-        }else if(uop->getOpcode() == UO_Minus){
-             mStack.back().bindStmt(uop, -value);
-        }else if(uop->getOpcode() == UO_Deref){
-            mStack.back().bindStmt(uop,mHeap->Get((long*)value));
+        if (uop->getOpcode() == UO_Plus) {
+            mStack.back().bindStmt(uop, value);
+        } else if (uop->getOpcode() == UO_Minus) {
+            mStack.back().bindStmt(uop, -value);
+        } else if (uop->getOpcode() == UO_Deref) {
+            mStack.back().bindStmt(uop, mHeap->Get((long *)value));
         }
     }
 
@@ -250,24 +252,26 @@ class Environment {
             if (DeclRefExpr *declexpr = dyn_cast<DeclRefExpr>(left)) {
                 mStack.back().bindStmt(left, val);
                 Decl *decl = declexpr->getFoundDecl();
-                if(mStack.back().findDecl(decl))
+                if (mStack.back().findDecl(decl))
                     mStack.back().bindDecl(decl, val);
                 else
-                    mStack.front().bindDecl(decl,val);
-            } else if(ArraySubscriptExpr *aexpr = dyn_cast<ArraySubscriptExpr>(left)){
+                    mStack.front().bindDecl(decl, val);
+            } else if (ArraySubscriptExpr *aexpr =
+                           dyn_cast<ArraySubscriptExpr>(left)) {
                 long index = expr(aexpr->getIdx());
-                DeclRefExpr *declref = dyn_cast<DeclRefExpr>(aexpr->getLHS()->IgnoreImpCasts());
-                if(!declref) printf("ERROR: Array reference not known.\n");
-                Decl* decl = declref->getFoundDecl();
-                long temp =  mStack.back().findDecl(decl)
-                          ? mStack.back().getDeclVal(decl)
-                          : mStack.front().getDeclVal(decl);
-                long* arr = (long*)temp;
+                DeclRefExpr *declref =
+                    dyn_cast<DeclRefExpr>(aexpr->getLHS()->IgnoreImpCasts());
+                if (!declref) printf("ERROR: Array reference not known.\n");
+                Decl *decl = declref->getFoundDecl();
+                long temp = mStack.back().findDecl(decl)
+                                ? mStack.back().getDeclVal(decl)
+                                : mStack.front().getDeclVal(decl);
+                long *arr = (long *)temp;
                 arr[index] = val;
-            } else if(UnaryOperator *uope = dyn_cast<UnaryOperator>(left)) {
+            } else if (UnaryOperator *uope = dyn_cast<UnaryOperator>(left)) {
                 long lval = expr(uope->getSubExpr());
-                long* addr = (long *)lval;
-                mHeap->Update(addr,val);
+                long *addr = (long *)lval;
+                mHeap->Update(addr, val);
             } else {
                 printf("shouldn't be here\n");
             }
@@ -275,9 +279,11 @@ class Environment {
             long valr = expr(right);
             long vall = expr(left);
             long res = 0;
-            if(left->getType().getTypePtr()->isPointerType() && !right->getType().getTypePtr()->isPointerType()){
+            if (left->getType().getTypePtr()->isPointerType() &&
+                !right->getType().getTypePtr()->isPointerType()) {
                 valr *= sizeof(long);
-            }else if(!right->getType().getTypePtr()->isPointerType() && left->getType().getTypePtr()->isPointerType()){
+            } else if (!right->getType().getTypePtr()->isPointerType() &&
+                       left->getType().getTypePtr()->isPointerType()) {
                 vall *= sizeof(long);
             }
             if (bop->getOpcode() == BO_Add) {
@@ -330,37 +336,37 @@ class Environment {
     // handle var delarations.
     void vardecl(VarDecl *vdecl, StackFrame *sf) {
         if (vdecl->getType().getTypePtr()->isIntegerType() ||
-                 vdecl->getType().getTypePtr()->isCharType()) {
+            vdecl->getType().getTypePtr()->isCharType()) {
             long value = 0;
             if (vdecl->hasInit()) {
                 Expr *e = vdecl->getInit();
                 value = expr(e);
             }
             sf->bindDecl(vdecl, value);
-        } else if(vdecl->getType().getTypePtr()->isArrayType()){
-            const ConstantArrayType* atype = dyn_cast<ConstantArrayType>(vdecl->getType().getTypePtr());
+        } else if (vdecl->getType().getTypePtr()->isArrayType()) {
+            const ConstantArrayType *atype =
+                dyn_cast<ConstantArrayType>(vdecl->getType().getTypePtr());
             int asize = atype->getSize().getSExtValue();
-            if(asize <= 0){
-                llvm::errs()<<"Error: Invalid Array Size "<<asize<<".\n";
+            if (asize <= 0) {
+                llvm::errs() << "Error: Invalid Array Size " << asize << ".\n";
             }
-            if(atype->getElementType().getTypePtr()->isIntegerType()){
-                long* temp = new long[asize];
-                for(int i = 0;i < asize;i++) temp[i] = 0;
-                sf->bindDecl(vdecl,(long)temp);
-            }else if(atype->getElementType().getTypePtr()->isPointerType()){
-                long** temp = new long*[asize];
-                for(int i = 0;i < asize;i++) temp[i] = 0;
-                sf->bindDecl(vdecl,(long)temp);
+            if (atype->getElementType().getTypePtr()->isIntegerType()) {
+                long *temp = new long[asize];
+                for (int i = 0; i < asize; i++) temp[i] = 0;
+                sf->bindDecl(vdecl, (long)temp);
+            } else if (atype->getElementType().getTypePtr()->isPointerType()) {
+                long **temp = new long *[asize];
+                for (int i = 0; i < asize; i++) temp[i] = 0;
+                sf->bindDecl(vdecl, (long)temp);
             }
-        } else if(vdecl->getType().getTypePtr()->isPointerType()){
+        } else if (vdecl->getType().getTypePtr()->isPointerType()) {
             long value = 0;
             if (vdecl->hasInit()) {
                 Expr *e = vdecl->getInit();
                 value = expr(e);
             }
-            sf->bindDecl(vdecl,value);
-        }
-        else {
+            sf->bindDecl(vdecl, value);
+        } else {
             sf->bindDecl(vdecl, 0);
         }
     }
@@ -377,47 +383,31 @@ class Environment {
     }
     void declref(DeclRefExpr *declref) {
         mStack.back().setPC(declref);
-        if (declref->getType()->isIntegerType() || declref->getType()->isPointerType()) {
+        if (declref->getType()->isIntegerType() ||
+            declref->getType()->isPointerType()) {
             Decl *decl = declref->getFoundDecl();
             // global or local value
             long val = mStack.back().findDecl(decl)
-                          ? mStack.back().getDeclVal(decl)
-                          : mStack.front().getDeclVal(decl);
+                           ? mStack.back().getDeclVal(decl)
+                           : mStack.front().getDeclVal(decl);
             mStack.back().bindStmt(declref, val);
-        }else{
-        //    printf("wtf!\n");
+        } else {
+            //    printf("wtf!\n");
         }
-/*
-        else if(declref->getType()->isArrayType()){
-            Decl *decl = declref->getFoundDecl();
-            declref->getRHS();
-            ArraySubscriptExpr* array = dyn_cast<ArraySubscriptExpr>(declref->IgnoreImpCasts());
-            printf("casts:%x\n",array);
-            long index = 0;
-            index = expr(array->getIdx());
-            // global or local value
-            long temp =  mStack.back().findDecl(decl)
-                          ? mStack.back().getDeclVal(decl)
-                          : mStack.front().getDeclVal(decl);
-            long* arr = (long*)temp;
-            mStack.back().bindStmt(declref, arr[index]);
-        }
-*/
     }
 
-    void arrayref(ArraySubscriptExpr* aexpr){
+    void arrayref(ArraySubscriptExpr *aexpr) {
         long index = expr(aexpr->getIdx());
-        DeclRefExpr *declref = dyn_cast<DeclRefExpr>(aexpr->getLHS()->IgnoreImpCasts());
-        if(!declref) printf("ERROR: Array reference not known.\n");
-        Decl* decl = declref->getFoundDecl();
-        long temp =  mStack.back().findDecl(decl)
-                      ? mStack.back().getDeclVal(decl)
-                      : mStack.front().getDeclVal(decl);
-        long* arr = (long*)temp;
+        DeclRefExpr *declref =
+            dyn_cast<DeclRefExpr>(aexpr->getLHS()->IgnoreImpCasts());
+        if (!declref) printf("ERROR: Array reference not known.\n");
+        Decl *decl = declref->getFoundDecl();
+        long temp = mStack.back().findDecl(decl)
+                        ? mStack.back().getDeclVal(decl)
+                        : mStack.front().getDeclVal(decl);
+        long *arr = (long *)temp;
         mStack.back().bindStmt(aexpr, arr[index]);
     }
-
-
 
     void cast(CastExpr *castexpr) {
         mStack.back().setPC(castexpr);
@@ -425,8 +415,8 @@ class Environment {
             Expr *expr = castexpr->getSubExpr();
             long val = mStack.back().getStmtVal(expr);
             mStack.back().bindStmt(castexpr, val);
-        }else if(castexpr->getType()->isPointerType()){
-            //printf("Pointer\n");
+        } else if (castexpr->getType()->isPointerType()) {
+            // printf("Pointer\n");
         }
     }
 
@@ -439,7 +429,7 @@ class Environment {
             mStack.pop_back();
             mStack.back().bindStmt(callexpr, rval);
         }
-        printf("\tret\n");
+        //printf("\tret\n");
     }
 
     void retstmt(ReturnStmt *rstmt) {
@@ -449,12 +439,12 @@ class Environment {
             mStack.back().setRetValue(rval);
         }
         mStack.back().setReturned();
-        printf("\tretstmt\n");
+        //printf("\tretstmt\n");
     }
 
     /// !TODO Support Function Call
     void call(CallExpr *callexpr) {
-        printf("\tcall\n");
+        //printf("\tcall\n");
         mStack.back().setPC(callexpr);
         long val = 0;
         FunctionDecl *callee = callexpr->getDirectCallee();
@@ -466,16 +456,16 @@ class Environment {
         } else if (callee == mOutput) {
             Expr *e = callexpr->getArg(0);
             val = expr(e);
-            llvm::errs() << "==========OUTPUT:" << val << "\n";
+            llvm::errs() << val << "\n";
         } else if (callee == mMalloc) {
             Expr *e = callexpr->getArg(0);
             val = expr(e);
-            long* addr = mHeap->Malloc(val);
-            mStack.back().bindStmt(callexpr,(long)addr);
+            long *addr = mHeap->Malloc(val);
+            mStack.back().bindStmt(callexpr, (long)addr);
         } else if (callee == mFree) {
             Expr *e = callexpr->getArg(0);
             val = expr(e);
-            long* addr = (long*) val;
+            long *addr = (long *)val;
             mHeap->Free(addr);
         }
 
