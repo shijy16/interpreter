@@ -166,6 +166,12 @@ class Environment {
         mStack.back().bindStmt(literal,value);
     }
 
+    void characterLiteral(CharacterLiteral* cl){
+        long value = (long) cl->getValue();
+        printf("%ld,%c\n",value,(char)value);
+        mStack.back().bindStmt(cl,value);
+    }
+
     long expr(Expr *exp) {
         Expr* e = exp->IgnoreImpCasts();
         if (BinaryOperator *bop = dyn_cast<BinaryOperator>(e)) {
@@ -175,6 +181,9 @@ class Environment {
                        dyn_cast<IntegerLiteral>(e)) {
             long value = (long)integerLiteral->getValue().getSExtValue();
             //long value = mStack.back().getStmtVal(integerLiteral);
+            return value;
+        } else if (CharacterLiteral *cl = dyn_cast<CharacterLiteral>(e)){
+            long value = cl->getValue();
             return value;
         } else if (DeclRefExpr *dref = dyn_cast<DeclRefExpr>(e)) {
             declref(dref); // have to do this. Global declref havn't been visited
@@ -320,7 +329,8 @@ class Environment {
 
     // handle var delarations.
     void vardecl(VarDecl *vdecl, StackFrame *sf) {
-        if (vdecl->getType().getTypePtr()->isIntegerType()) {
+        if (vdecl->getType().getTypePtr()->isIntegerType() ||
+                 vdecl->getType().getTypePtr()->isCharType()) {
             long value = 0;
             if (vdecl->hasInit()) {
                 Expr *e = vdecl->getInit();
@@ -374,7 +384,6 @@ class Environment {
                           ? mStack.back().getDeclVal(decl)
                           : mStack.front().getDeclVal(decl);
             mStack.back().bindStmt(declref, val);
-            printf("declref:%lx\n",val);
         }else{
         //    printf("wtf!\n");
         }

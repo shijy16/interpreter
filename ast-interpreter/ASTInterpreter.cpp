@@ -185,6 +185,14 @@ class InterpreterVisitor : public EvaluatedExprVisitor<InterpreterVisitor> {
         mEnv->integerLiteral(il);
     }
 
+    virtual void VisitCharacterLiteral(CharacterLiteral* cl){
+        if (mEnv->isCurFuncReturned()) {
+            return;
+        }
+        mEnv->characterLiteral(cl);
+        
+    }
+
    private:
     Environment *mEnv;
 };

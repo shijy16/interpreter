@@ -7,7 +7,7 @@ work in progress
 + [x] Type
   + [x] int
   + [x] void
-  + [ ] char
+  + [x] char
   + [x] * `pointer`
 
 + [x] Operator:
@@ -30,14 +30,14 @@ work in progress
   + [x] `ForStmt`
   + [x] `DeclStmt`
   + [x] `ReturnStmtb`
-+ [ ] Expr
++ [x] Expr
   + [x] `BinaryOperator`,`UnaryOperator`
   + [x] `ParenOperator`
   + [x] `DeclRefExpr`
   + [x] `CallExpr`
-  + [ ] `CastExpr`
+  + [x] `CastExpr`
 + [x] Built-in Functions
-  + [ ] `GET()`
+  + [x] `GET()`
   + [x] `PRINT(int a)`
   + [x] `MALLOC(int a)`
   + [x] `FREE()`
